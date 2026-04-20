@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Planova - Admin Panel</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body data-page="Admin">
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-badge">
+        <img src="assets/logo.png" alt="Planova" class="site-logo" />
+      </div>
+      <h1>Planova</h1>
+    </div>
+
+    <nav class="nav">
+      <a href="index.html"><span class="icon">🏠</span><span>Dashboard</span></a>
+      <a class="active" href="admin.html"><span class="icon">🛡️</span><span>Admin Panel</span></a>
+    </nav>
+
+    <div class="profile-mini">
+      <div class="avatar" id="avatarMini"></div>
+      <div class="meta">
+        <div class="name" id="sidebarName">Admin</div>
+        <div class="email" id="sidebarEmail">—</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <header class="topbar">
+      <div class="top-left">
+        <div class="datetime" id="dateTime">—</div>
+      </div>
+      <div class="top-right">
+        <div class="user-chip">
+          <div>
+            <div class="u-name" id="userName">Admin</div>
+            <div class="u-email" id="userEmail">—</div>
+          </div>
+        </div>
+        <button class="pill-btn" id="btnLogout" type="button">Logout</button>
+      </div>
+    </header>
+
+    <!-- Access Denied -->
+    <div id="accessDenied" style="display:none;">
+      <section class="card" style="text-align:center;padding:48px 24px;">
+        <div style="font-size:48px;margin-bottom:12px;">🚫</div>
+        <h2>Access Denied</h2>
+        <p style="color:var(--muted);">You don't have admin privileges.</p>
+        <a href="index.html" class="small-btn primary" style="display:inline-block;margin-top:12px;">← Back to Dashboard</a>
+      </section>
+    </div>
+
+    <!-- Admin Content -->
+    <div id="adminContent" style="display:none;">
+
+      <!-- Stats -->
+      <section class="card" style="padding:18px;">
+        <div class="grid3">
+          <div class="stat" style="background:rgba(79,141,255,.15);border-color:rgba(79,141,255,.3);">
+            <div class="num" id="statTotalUsers">—</div>
+            <div class="lab">Total Users</div>
+          </div>
+          <div class="stat" style="background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.3);">
+            <div class="num" id="statTotalTasks">—</div>
+            <div class="lab">Total Tasks</div>
+          </div>
+          <div class="stat" style="background:rgba(251,146,60,.12);border-color:rgba(251,146,60,.3);">
+            <div class="num" id="statTotalExams">—</div>
+            <div class="lab">Total Exams</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Users Table -->
+      <section class="card">
+        <div class="toolbar">
+          <div>
+            <h2>👥 Users</h2>
+            <div class="sub">Manage all registered accounts</div>
+          </div>
+          <input class="input" id="usersSearch" placeholder="Search by name or email..." style="width:220px;" />
+        </div>
+
+        <div class="notice" id="adminNotice" style="margin-top:10px;"></div>
+
+        <div id="usersList" style="margin-top:14px;"></div>
+        <div class="helper" id="usersEmpty" style="display:none;">No users found.</div>
+      </section>
+
+    </div><!-- end adminContent -->
+  </main>
+</div>
+
+<!-- Edit User Modal -->
+<div class="modal-overlay" id="editUserOverlay" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="head">
+      <h3>Edit User</h3>
+      <button class="close" id="editUserClose" type="button">✕</button>
+    </div>
+    <div class="notice" id="editUserNotice"></div>
+    <div class="form">
+      <div class="field">
+        <div class="label">Full Name</div>
+        <input class="input" id="editUserName" type="text" placeholder="Full name" />
+      </div>
+      <div class="field">
+        <div class="label">Email</div>
+        <input class="input" id="editUserEmail" type="email" placeholder="Email" />
+      </div>
+      <div class="field">
+        <div class="label">New Password (optional)</div>
+        <input class="input" id="editUserPassword" type="password" placeholder="Leave blank to keep current" />
+      </div>
+      <div class="field">
+        <div class="label">Admin?</div>
+        <select class="input" id="editUserAdmin">
+          <option value="false">No</option>
+          <option value="true">Yes — Admin</option>
+        </select>
+      </div>
+    </div>
+    <div class="actions" style="margin-top:14px;">
+      <button class="btn" id="editUserCancel" type="button">Cancel</button>
+      <button class="btn primary" id="editUserSave" type="button">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+"use strict";
+
+const SUPABASE_URL = "https://qcfnilswrabwtkitbofj.supabase.co/";
+const SUPABASE_ANON_KEY = "sb_publishable_v4TO8Lh2upbkp9byJRBgUA_PSarae05";
+const sb = window.__planova_sb || (window.__planova_sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false }
+}));
+
+const PLANOVA_SESSION_KEY = "planova.session.v1";
+const $ = (id) => document.getElementById(id);
+
+// ---- Session ----
+async function getSession() {
+  const raw = localStorage.getItem(PLANOVA_SESSION_KEY);
+  if (!raw) return null;
+  try {
+    const { access_token, refresh_token } = JSON.parse(raw);
+    const { data } = await sb.auth.setSession({ access_token, refresh_token });
+    return data?.session || null;
+  } catch { return null; }
+}
+
+// ---- DateTime ----
+function updateDateTime() {
+  const el = $("dateTime");
+  if (!el) return;
+  const now = new Date();
+  el.textContent = now.toLocaleString(undefined, { weekday:"short", month:"short", day:"numeric" })
+    + " · " + now.toLocaleTimeString(undefined, { hour:"2-digit", minute:"2-digit" });
+}
+
+// ---- Notice ----
+function showNotice(msg, isError = false) {
+  const el = $("adminNotice");
+  if (!el) return;
+  el.style.display = msg ? "block" : "none";
+  el.textContent = msg;
+  el.style.borderColor = isError ? "rgba(255,90,90,.35)" : "rgba(79,141,255,.35)";
+}
+
+function showEditNotice(msg, isError = false) {
+  const el = $("editUserNotice");
+  if (!el) return;
+  el.style.display = msg ? "block" : "none";
+  el.textContent = msg;
+  el.style.borderColor = isError ? "rgba(255,90,90,.35)" : "rgba(79,141,255,.35)";
+}
+
+// ---- Load Users ----
+let allUsers = [];
+let editingUserId = null;
+
+async function loadUsers() {
+  const { data, error } = await sb.from("profiles").select("*").order("created_at", { ascending: false });
+  
+  if (error) { 
+    showNotice("⚠️ Cannot load users: " + error.message + " — Run the SQL fix below.", true);
+    // Show SQL fix instructions
+    const wrap = $("usersList");
+    if (wrap) wrap.innerHTML = `
+      <div style="padding:20px;background:rgba(255,90,90,.08);border-radius:16px;border:1px solid rgba(255,90,90,.2);margin-top:10px;">
+        <div style="font-weight:800;margin-bottom:10px;">🔧 Fix Required — Run this in Supabase SQL Editor:</div>
+        <code style="display:block;background:rgba(0,0,0,.3);padding:14px;border-radius:10px;font-size:12px;white-space:pre-wrap;color:#a5f3fc;">-- Allow admin to read all profiles
+CREATE POLICY "Admin can view all profiles"
+ON profiles FOR SELECT
+USING (
+  EXISTS (
+    SELECT 1 FROM profiles
+    WHERE id = auth.uid() AND is_admin = true
+  )
+);</code>
+      </div>`;
+    return; 
+  }
+
+  allUsers = data || [];
+  $("statTotalUsers").textContent = allUsers.length;
+  renderUsers(allUsers);
+  loadStats();
+}
+
+async function loadStats() {
+  const { count: taskCount } = await sb.from("tasks").select("*", { count: "exact", head: true });
+  const { count: examCount } = await sb.from("exams").select("*", { count: "exact", head: true });
+  if ($("statTotalTasks")) $("statTotalTasks").textContent = taskCount ?? "—";
+  if ($("statTotalExams")) $("statTotalExams").textContent = examCount ?? "—";
+}
+
+function renderUsers(list) {
+  const wrap = $("usersList");
+  const empty = $("usersEmpty");
+  if (!wrap) return;
+  wrap.innerHTML = "";
+
+  if (!list || list.length === 0) {
+    empty.style.display = "block";
+    return;
+  }
+  empty.style.display = "none";
+
+  list.forEach((u) => {
+    const div = document.createElement("div");
+    div.className = "item";
+    div.innerHTML = `
+      <div class="left">
+        <div class="dot" style="${u.is_admin ? 'background:rgba(251,146,60,.8);border-color:rgba(251,146,60,.8);' : ''}"></div>
+        <div>
+          <div class="title">
+            ${u.full_name || "—"}
+            ${u.is_admin ? '<span style="font-size:11px;padding:2px 8px;border-radius:8px;background:rgba(251,146,60,.2);color:#c2410c;font-weight:900;margin-left:6px;">ADMIN</span>' : ''}
+          </div>
+          <div class="meta">${u.email || "—"} · Joined: ${u.created_at ? new Date(u.created_at).toLocaleDateString() : "—"}</div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="small-btn primary" type="button" data-act="edit" data-id="${u.id}">Edit</button>
+        <button class="small-btn danger" type="button" data-act="del" data-id="${u.id}" ${u.is_admin ? 'disabled title="Cannot delete admin"' : ''}>Delete</button>
+      </div>
+    `;
+    wrap.appendChild(div);
+  });
+
+  wrap.querySelectorAll("button[data-act]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const act = btn.getAttribute("data-act");
+      const id = btn.getAttribute("data-id");
+      if (act === "edit") openEditUser(id);
+      if (act === "del") await deleteUser(id);
+    });
+  });
+}
+
+// ---- Edit User ----
+function openEditUser(userId) {
+  const u = allUsers.find((x) => x.id === userId);
+  if (!u) return;
+  editingUserId = userId;
+
+  if ($("editUserName")) $("editUserName").value = u.full_name || "";
+  if ($("editUserEmail")) $("editUserEmail").value = u.email || "";
+  if ($("editUserPassword")) $("editUserPassword").value = "";
+  if ($("editUserAdmin")) $("editUserAdmin").value = u.is_admin ? "true" : "false";
+
+  showEditNotice("");
+  const overlay = $("editUserOverlay");
+  if (overlay) { overlay.style.display = "flex"; overlay.setAttribute("aria-hidden","false"); }
+}
+
+function closeEditUser() {
+  editingUserId = null;
+  const overlay = $("editUserOverlay");
+  if (overlay) { overlay.style.display = "none"; overlay.setAttribute("aria-hidden","true"); }
+}
+
+$("editUserClose")?.addEventListener("click", closeEditUser);
+$("editUserCancel")?.addEventListener("click", closeEditUser);
+
+$("editUserSave")?.addEventListener("click", async () => {
+  if (!editingUserId) return;
+  showEditNotice("Saving...");
+
+  const newName = $("editUserName")?.value?.trim();
+  const newEmail = $("editUserEmail")?.value?.trim();
+  const newPass = $("editUserPassword")?.value?.trim();
+  const isAdmin = $("editUserAdmin")?.value === "true";
+
+  try {
+    // Update profile
+    const profileUpdate = { full_name: newName, email: newEmail, is_admin: isAdmin };
+    const { error: profErr } = await sb.from("profiles").update(profileUpdate).eq("id", editingUserId);
+    if (profErr) throw profErr;
+
+    // Update password if provided (requires service_role — show instructions)
+    if (newPass) {
+      if (newPass.length < 6) {
+        showEditNotice("Password must be at least 6 characters.", true);
+        return;
+      }
+      // Note: Updating another user's password requires service_role key
+      // For now we show instruction
+      showEditNotice("✅ Profile updated! To change password, use Supabase Dashboard → Authentication → Users → select user → Reset Password.", false);
+    } else {
+      showEditNotice("✅ User updated successfully!");
+    }
+
+    // Refresh local cache
+    const idx = allUsers.findIndex(x => x.id === editingUserId);
+    if (idx >= 0) allUsers[idx] = { ...allUsers[idx], full_name: newName, email: newEmail, is_admin: isAdmin };
+    renderUsers(allUsers);
+
+    setTimeout(() => closeEditUser(), 2500);
+  } catch (err) {
+    showEditNotice(err?.message || "Failed to update user.", true);
+  }
+});
+
+// ---- Delete User ----
+async function deleteUser(userId) {
+  const u = allUsers.find((x) => x.id === userId);
+  if (!u) return;
+  if (u.is_admin) { showNotice("Cannot delete admin account.", true); return; }
+
+  const confirmed = confirm(`Delete user "${u.full_name || u.email}"?\nThis will remove their profile. Their auth account stays in Supabase Auth.`);
+  if (!confirmed) return;
+
+  showNotice("Deleting...");
+  try {
+    // Delete all user data
+    await sb.from("tasks").delete().eq("user_id", userId);
+    await sb.from("exams").delete().eq("user_id", userId);
+    await sb.from("notifications").delete().eq("user_id", userId);
+    await sb.from("performance_records").delete().eq("user_id", userId);
+    await sb.from("study_plans").delete().eq("user_id", userId);
+    await sb.from("profiles").delete().eq("id", userId);
+
+    allUsers = allUsers.filter(x => x.id !== userId);
+    renderUsers(allUsers);
+    $("statTotalUsers").textContent = allUsers.length;
+    showNotice("✅ User data deleted. To fully remove auth account, go to Supabase → Authentication → Users.");
+  } catch (err) {
+    showNotice(err?.message || "Failed to delete user.", true);
+  }
+}
+
+// ---- Search ----
+$("usersSearch")?.addEventListener("input", (e) => {
+  const q = (e.target.value || "").toLowerCase();
+  renderUsers(allUsers.filter(u =>
+    (u.full_name || "").toLowerCase().includes(q) ||
+    (u.email || "").toLowerCase().includes(q)
+  ));
+});
+
+// ---- Logout ----
+$("btnLogout")?.addEventListener("click", async () => {
+  await sb.auth.signOut();
+  localStorage.removeItem(PLANOVA_SESSION_KEY);
+  location.href = "index.html";
+});
+
+// ---- Init ----
+document.addEventListener("DOMContentLoaded", async () => {
+  updateDateTime();
+  setInterval(updateDateTime, 30000);
+
+  const session = await getSession();
+  if (!session) {
+    location.href = "index.html";
+    return;
+  }
+
+  // Update UI
+  const { data: prof } = await sb.from("profiles").select("*").eq("id", session.user.id).maybeSingle();
+
+  if (!prof?.is_admin) {
+    $("accessDenied").style.display = "block";
+    if ($("userName")) $("userName").textContent = prof?.full_name || "User";
+    if ($("userEmail")) $("userEmail").textContent = session.user.email || "";
+    return;
+  }
+
+  $("adminContent").style.display = "block";
+  if ($("userName")) $("userName").textContent = prof?.full_name || "Admin";
+  if ($("userEmail")) $("userEmail").textContent = session.user.email || "";
+  if ($("sidebarName")) $("sidebarName").textContent = prof?.full_name || "Admin";
+  if ($("sidebarEmail")) $("sidebarEmail").textContent = session.user.email || "";
+
+  await loadUsers();
+});
+</script>
+</body>
+</html>
