@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Planova - Schedule</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body data-page="Schedule">
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-badge">
+        <img src="assets/logo.png" alt="Planova" class="site-logo" />
+      </div>
+      <h1>Planova</h1>
+    </div>
+    <nav class="nav">
+      <a href="index.html"><span class="icon">🏠</span><span>Dashboard</span></a>
+      <a href="tasks.html"><span class="icon">✅</span><span>Tasks</span></a>
+      <a href="exams.html"><span class="icon">🗓️</span><span>Exams</span></a>
+      <a href="study-plan.html"><span class="icon">📚</span><span>Study Plan</span></a>
+      <a href="performance.html"><span class="icon">📈</span><span>Performance</span></a>
+      <a href="notifications.html"><span class="icon">🔔</span><span>Notifications</span></a>
+      <a class="active" href="schedule.html"><span class="icon">📅</span><span>Schedule</span></a>
+    </nav>
+    <div class="profile-mini">
+      <div class="avatar" id="avatarMini" title="Edit Profile" style="cursor:pointer;"></div>
+      <div class="meta">
+        <div class="name" id="sidebarName" title="Edit Profile" style="cursor:pointer;">Guest</div>
+        <div class="email" id="sidebarEmail">Not signed in</div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="top-left">
+        <div class="datetime" id="dateTime">—</div>
+      </div>
+      <div class="top-right">
+        <button class="icon-btn" id="btnOpenNotifications" title="Notifications" style="position:relative;">🔔</button>
+        <button class="icon-btn" id="btnOpenMail" title="Contact">✉️</button>
+        <div class="user-chip">
+          <div>
+            <div class="u-name" id="userName">Guest</div>
+            <div class="u-email" id="userEmail">Not signed in</div>
+          </div>
+        </div>
+        <button class="pill-btn primary" id="btnLogin" type="button">Login</button>
+        <button class="pill-btn" id="btnSignup" type="button">Sign Up</button>
+        <button class="pill-btn" id="btnLogout" type="button" style="display:none;">Logout</button>
+      </div>
+    </header>
+
+    <!-- PAGE CONTENT START -->
+    <section class="card">
+      <div class="toolbar">
+        <div>
+          <h2>📅 Schedule Planner</h2>
+          <div class="sub">All your tasks & exams in one unified view</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <!-- Filter -->
+          <select class="input" id="scheduleFilter" style="width:auto;padding:8px 12px;font-size:13px;">
+            <option value="all">All</option>
+            <option value="task">Tasks only</option>
+            <option value="exam">Exams only</option>
+            <option value="pending">Pending</option>
+            <option value="done">Completed</option>
+          </select>
+          <!-- Week nav -->
+          <button class="small-btn" id="btnPrevWeek" type="button">‹ Prev</button>
+          <span id="weekLabel" style="font-weight:800;font-size:13px;white-space:nowrap;"></span>
+          <button class="small-btn" id="btnNextWeek" type="button">Next ›</button>
+        </div>
+      </div>
+
+      <!-- Summary chips -->
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin:10px 0 16px 0;">
+        <div style="padding:8px 14px;border-radius:12px;background:rgba(79,141,255,.12);border:1px solid rgba(79,141,255,.25);font-size:13px;font-weight:700;">
+          ✅ <span id="chipTasksDone">0</span> Tasks Done
+        </div>
+        <div style="padding:8px 14px;border-radius:12px;background:rgba(251,146,60,.10);border:1px solid rgba(251,146,60,.25);font-size:13px;font-weight:700;">
+          ⏳ <span id="chipTasksPending">0</span> Pending
+        </div>
+        <div style="padding:8px 14px;border-radius:12px;background:rgba(168,85,247,.10);border:1px solid rgba(168,85,247,.25);font-size:13px;font-weight:700;">
+          🗓️ <span id="chipExamsUpcoming">0</span> Upcoming Exams
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div style="overflow-x:auto;">
+        <table id="scheduleTable" style="width:100%;border-collapse:collapse;">
+          <thead>
+            <tr style="border-bottom:2px solid var(--border);">
+              <th style="padding:12px 14px;text-align:left;font-size:13px;color:var(--muted);font-weight:800;">Day</th>
+              <th style="padding:12px 14px;text-align:left;font-size:13px;color:var(--muted);font-weight:800;">Type</th>
+              <th style="padding:12px 14px;text-align:left;font-size:13px;color:var(--muted);font-weight:800;">Title</th>
+              <th style="padding:12px 14px;text-align:left;font-size:13px;color:var(--muted);font-weight:800;">Time</th>
+              <th style="padding:12px 14px;text-align:left;font-size:13px;color:var(--muted);font-weight:800;">Status</th>
+            </tr>
+          </thead>
+          <tbody id="scheduleBody"></tbody>
+        </table>
+        <div class="helper" id="scheduleEmpty" style="display:none;text-align:center;padding:32px;">
+          Nothing scheduled for this week 🎉
+        </div>
+      </div>
+    </section>
+    <!-- PAGE CONTENT END -->
+  </main>
+</div>
+
+<!-- Auth Modal -->
+<div class="modal-overlay" id="authOverlay" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+    <div class="head">
+      <h3 id="authTitle">Account</h3>
+      <button class="close" id="authClose" type="button">✕</button>
+    </div>
+    <div class="tabs">
+      <button class="tab active" id="tabLogin" type="button">Login</button>
+      <button class="tab" id="tabSignup" type="button">Sign Up</button>
+      <button class="tab" id="tabForgot" type="button">Forgot?</button>
+    </div>
+    <div class="notice" id="authNotice"></div>
+    <form id="authForm" autocomplete="on">
+      <div class="form" id="signupExtra" style="display:none;">
+        <div class="field">
+          <div class="label">Full name</div>
+          <input class="input" id="authFullName" placeholder="e.g., Sarah Ahmed" />
+          <div class="helper">This will be shown across the app.</div>
+        </div>
+        <div></div>
+      </div>
+      <div class="form">
+        <div class="field">
+          <div class="label">Email</div>
+          <input class="input" id="authEmail" type="email" placeholder="you@example.com" required />
+        </div>
+        <div class="field">
+          <div class="label">Password</div>
+          <input class="input" id="authPassword" type="password" placeholder="••••••••" required />
+        </div>
+      </div>
+      <div id="forgotSection" style="display:none;">
+        <div class="form single">
+          <div class="field">
+            <div class="label">Enter your email</div>
+            <input class="input" id="forgotEmail" type="email" placeholder="you@example.com" />
+            <div class="helper">We'll send a reset link to your email.</div>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn" id="forgotCancel" type="button">Cancel</button>
+          <button class="btn primary" id="forgotSubmit" type="button">Send Reset Link</button>
+        </div>
+      </div>
+      <div id="loginSignupSection">
+        <div class="actions">
+          <button class="btn" id="authCancel" type="button">Cancel</button>
+          <button class="btn primary" id="authSubmit" type="submit">Login</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Profile Modal -->
+<div class="modal-overlay" id="profileOverlay" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="head">
+      <h3>Edit Profile</h3>
+      <button class="close" id="profileClose" type="button">✕</button>
+    </div>
+    <div class="notice" id="profileNotice"></div>
+    <form id="profileForm">
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;">
+        <div style="width:72px;height:72px;border-radius:50%;overflow:hidden;border:2px solid rgba(255,255,255,.25);background:linear-gradient(135deg,#ffffff,#cfe1ff);flex-shrink:0;">
+          <img id="profileAvatarPreview" src="" alt="Avatar" style="width:100%;height:100%;object-fit:cover;display:none;" />
+        </div>
+        <div>
+          <div class="label">Profile Photo</div>
+          <label style="display:inline-block;margin-top:6px;padding:8px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.10);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">
+            Choose Photo
+            <input type="file" id="profileAvatarInput" accept="image/*" style="display:none;" />
+          </label>
+          <div class="helper">JPG, PNG — max 2MB</div>
+        </div>
+      </div>
+      <div class="form">
+        <div class="field"><div class="label">Full Name</div><input class="input" id="profileName" type="text" placeholder="e.g., Sarah Ahmed" /></div>
+        <div class="field"><div class="label">Email</div><input class="input" id="profileEmail" type="email" disabled style="opacity:.6;cursor:not-allowed;" /></div>
+        <div class="field"><div class="helper" style="margin-top:8px;opacity:.7;">To change password, use "Forgot Password" from the login screen.</div></div>
+        <div></div>
+      </div>
+      <div class="actions">
+        <button class="btn" id="profileCancel" type="button">Cancel</button>
+        <button class="btn primary" type="submit">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="script.js"></script>
+<script>
+// Schedule page logic
+let scheduleWeekOffset = 0;
+
+function getWeekRange(offset = 0) {
+  const now = new Date();
+  const day = now.getDay(); // 0=Sun
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1) + offset * 7);
+  monday.setHours(0,0,0,0);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23,59,59,999);
+  return { monday, sunday };
+}
+
+function fmtDay(d) {
+  return new Date(d).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+}
+function fmtTime(d) {
+  if (!d) return "—";
+  const dt = new Date(d);
+  return dt.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+}
+
+async function renderSchedule() {
+  const { monday, sunday } = getWeekRange(scheduleWeekOffset);
+  const monStr = monday.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  const sunStr = sunday.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  document.getElementById("weekLabel").textContent = `${monStr} – ${sunStr}`;
+
+  const session = window.__planova_session;
+  if (!session?.user?.id) {
+    document.getElementById("scheduleBody").innerHTML = `<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted);">🔒 Sign in to view your schedule</td></tr>`;
+    return;
+  }
+  const uid = session.user.id;
+
+  // Fetch tasks & exams
+  const { data: tasks } = await window.__planova_sb.from("tasks").select("*").eq("user_id", uid);
+  const { data: exams } = await window.__planova_sb.from("exams").select("*").eq("user_id", uid);
+
+  const filter = document.getElementById("scheduleFilter").value;
+
+  // Build rows
+  let rows = [];
+
+  (tasks || []).forEach(t => {
+    const date = t.due_date ? new Date(t.due_date) : null;
+    if (date && date >= monday && date <= sunday) {
+      rows.push({ date, type: "task", title: t.title, time: null, status: t.is_done ? "done" : "pending", raw: t });
+    }
+  });
+
+  (exams || []).forEach(e => {
+    const date = e.exam_time ? new Date(e.exam_time) : (e.exam_date ? new Date(e.exam_date) : null);
+    if (date && date >= monday && date <= sunday) {
+      rows.push({ date, type: "exam", title: e.subject, time: e.exam_time || null, status: e.is_done ? "done" : "upcoming", raw: e });
+    }
+  });
+
+  // Apply filter
+  if (filter !== "all") {
+    rows = rows.filter(r => {
+      if (filter === "task") return r.type === "task";
+      if (filter === "exam") return r.type === "exam";
+      if (filter === "pending") return r.status === "pending" || r.status === "upcoming";
+      if (filter === "done") return r.status === "done";
+      return true;
+    });
+  }
+
+  // Sort by date
+  rows.sort((a, b) => a.date - b.date);
+
+  // Update chips
+  const allTasks = (tasks || []);
+  const allExams = (exams || []);
+  document.getElementById("chipTasksDone").textContent = allTasks.filter(t => t.is_done).length;
+  document.getElementById("chipTasksPending").textContent = allTasks.filter(t => !t.is_done).length;
+  document.getElementById("chipExamsUpcoming").textContent = allExams.filter(e => !e.is_done).length;
+
+  // Render table
+  const tbody = document.getElementById("scheduleBody");
+  const empty = document.getElementById("scheduleEmpty");
+
+  if (rows.length === 0) {
+    tbody.innerHTML = "";
+    empty.style.display = "block";
+    return;
+  }
+  empty.style.display = "none";
+
+  const priorityColors = { high: "#b91c1c", normal: "#c2410c", low: "#15803d" };
+
+  tbody.innerHTML = rows.map(r => {
+    const isToday = new Date().toDateString() === r.date.toDateString();
+    const rowBg = isToday ? "background:rgba(79,141,255,.06);" : "";
+
+    const typeBadge = r.type === "task"
+      ? `<span style="padding:3px 10px;border-radius:8px;background:rgba(79,141,255,.15);color:#2563eb;font-size:12px;font-weight:800;">✅ Task</span>`
+      : `<span style="padding:3px 10px;border-radius:8px;background:rgba(251,146,60,.15);color:#c2410c;font-size:12px;font-weight:800;">🗓️ Exam</span>`;
+
+    let statusBadge = "";
+    if (r.status === "done") {
+      statusBadge = `<span style="padding:3px 10px;border-radius:8px;background:rgba(34,197,94,.15);color:#15803d;font-size:12px;font-weight:800;">✅ Done</span>`;
+    } else if (r.status === "upcoming") {
+      statusBadge = `<span style="padding:3px 10px;border-radius:8px;background:rgba(168,85,247,.15);color:#7c3aed;font-size:12px;font-weight:800;">🔜 Upcoming</span>`;
+    } else {
+      const pc = priorityColors[r.raw?.priority] || priorityColors.normal;
+      statusBadge = `<span style="padding:3px 10px;border-radius:8px;background:rgba(251,146,60,.12);color:${pc};font-size:12px;font-weight:800;">⏳ Pending</span>`;
+    }
+
+    const titleStyle = r.status === "done" ? "text-decoration:line-through;opacity:.65;" : "";
+    const todayMark = isToday ? `<span style="margin-left:6px;padding:2px 6px;border-radius:6px;background:rgba(79,141,255,.2);color:#4f8dff;font-size:10px;font-weight:900;">TODAY</span>` : "";
+
+    return `<tr style="border-bottom:1px solid var(--border);${rowBg}transition:.15s ease;" onmouseover="this.style.background='rgba(79,141,255,.04)'" onmouseout="this.style.background='${isToday ? 'rgba(79,141,255,.06)' : ''}'">
+      <td style="padding:14px;font-weight:700;font-size:13px;white-space:nowrap;">${fmtDay(r.date)}${todayMark}</td>
+      <td style="padding:14px;">${typeBadge}</td>
+      <td style="padding:14px;font-weight:700;${titleStyle}">${r.title || "—"}</td>
+      <td style="padding:14px;color:var(--muted);font-size:13px;">${r.type === "exam" ? fmtTime(r.time) : "—"}</td>
+      <td style="padding:14px;">${statusBadge}</td>
+    </tr>`;
+  }).join("");
+}
+
+// Store session for schedule page
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("btnPrevWeek").addEventListener("click", () => { scheduleWeekOffset--; renderSchedule(); });
+  document.getElementById("btnNextWeek").addEventListener("click", () => { scheduleWeekOffset++; renderSchedule(); });
+  document.getElementById("scheduleFilter").addEventListener("change", renderSchedule);
+
+  // Wait for auth then render
+  const checkSession = setInterval(async () => {
+    if (window.__planova_sb) {
+      const { data } = await window.__planova_sb.auth.getSession();
+      if (data?.session) {
+        window.__planova_session = data.session;
+        clearInterval(checkSession);
+        renderSchedule();
+      }
+    }
+  }, 500);
+
+  setTimeout(() => {
+    clearInterval(checkSession);
+    renderSchedule();
+  }, 3000);
+});
+</script>
+</body>
+</html>
