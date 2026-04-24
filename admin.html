@@ -64,18 +64,19 @@
 
       <!-- Stats -->
       <section class="card" style="padding:18px;">
-        <div class="grid3">
+        <div class="grid3" style="margin-top:12px">
           <div class="stat" style="background:rgba(79,141,255,.15);border-color:rgba(79,141,255,.3);">
             <div class="num" id="statTotalUsers">—</div>
             <div class="lab">Total Users</div>
           </div>
           <div class="stat" style="background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.3);">
-            <div class="num" id="statTotalTasks">—</div>
-            <div class="lab">Total Tasks</div>
+            <div class="num" id="statLastUserName" style="font-size:16px;font-weight:900;">—</div>
+            <div class="lab">Latest Registered</div>
+            <div id="statLastUserEmail" style="font-size:11px;opacity:.65;margin-top:4px;font-weight:600;"></div>
           </div>
-          <div class="stat" style="background:rgba(251,146,60,.12);border-color:rgba(251,146,60,.3);">
-            <div class="num" id="statTotalExams">—</div>
-            <div class="lab">Total Exams</div>
+          <div class="stat" style="background:rgba(122,168,255,.12);border-color:rgba(122,168,255,.3);">
+            <div class="num" id="statLastUserDate" style="font-size:16px;font-weight:900;">—</div>
+            <div class="lab">Joined Date</div>
           </div>
         </div>
       </section>
@@ -220,16 +221,16 @@ USING (
 }
 
 async function loadStats() {
-  // Count tasks across all users by summing per-user counts
-  let totalTasks = 0, totalExams = 0;
-  for (const u of allUsers) {
-    const { count: tc } = await sb.from("tasks").select("*", { count: "exact", head: true }).eq("user_id", u.id);
-    const { count: ec } = await sb.from("exams").select("*", { count: "exact", head: true }).eq("user_id", u.id);
-    totalTasks += (tc || 0);
-    totalExams += (ec || 0);
+  // Show last registered user
+  const lastUser = allUsers[0]; // already sorted by created_at desc
+  if (lastUser) {
+    if ($("statLastUserName")) $("statLastUserName").textContent = lastUser.full_name || "—";
+    if ($("statLastUserEmail")) $("statLastUserEmail").textContent = lastUser.email || "";
+    if ($("statLastUserDate")) {
+      const d = new Date(lastUser.created_at);
+      $("statLastUserDate").textContent = d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+    }
   }
-  if ($("statTotalTasks")) $("statTotalTasks").textContent = totalTasks;
-  if ($("statTotalExams")) $("statTotalExams").textContent = totalExams;
 }
 
 function renderUsers(list) {
